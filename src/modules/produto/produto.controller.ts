@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Post, Redirect, Render, Param, HttpCode } from "@nestjs/common";
+import { Body, Controller, Get, Post, Redirect, Render, Param, UseInterceptors } from "@nestjs/common";
 import { ProdutoService } from "./produto.service";
-import { ValidationView, toBoolean } from 'nest-validation-view';
+import { ValidationView } from 'nest-validation-view';
 import { CreateProdutoDto } from "./dtos/create-produto.dto";
 import { UpdateProdutoDto } from "./dtos/update-produto.dto";
 import { FornecedorService } from "../fornecedor/fornecedor.service";
+import { FornecedoresInterceptor } from "./interceptors/fornecedores.interceptor";
 
 @Controller('produtos')
 export class ProdutoController {
@@ -37,12 +38,13 @@ export class ProdutoController {
 
     @Post('criar')
     @Redirect('/produtos')
+    @UseInterceptors(FornecedoresInterceptor)
     @ValidationView('produto/formulario', ({ request, errors }) => ({
-        produto: {
-          ...request.body
-        },
+        titulo: 'Novo produto',
+        produto: { ...request.body },
+        fornecedores: (request as any).fornecedores,
         errors,
-      }))
+    }))
     async formularioCriarSalvar(@Body() dados: CreateProdutoDto): Promise<void> {
         await this.produtoService.create(dados);
     }
@@ -67,13 +69,16 @@ export class ProdutoController {
 
     @Post(':id/editar')
     @Redirect('/produtos')
+    @UseInterceptors(FornecedoresInterceptor)
     @ValidationView('produto/formulario', ({ request, errors }) => ({
+        titulo: 'Edição de Produto',
         produto: {
-          id: request.params.id,
-          ...request.body
+            id: request.params.id,
+            ...request.body
         },
+        fornecedores: (request as any).fornecedores,
         errors,
-      }))
+    }))
     async formEditarSalvar(@Param('id') id: number, @Body() dados: UpdateProdutoDto): Promise<void>{
         await this.produtoService.update(id, dados);
     }
@@ -100,9 +105,4 @@ export class ProdutoController {
         await this.produtoService.remove(id);
     }
 
-    @Post(':id/remover')
-    @HttpCode(204)
-    async remove(@Param('id') id: number): Promise<void>{
-        await this.produtoService.remove(id);
-    }
 }
